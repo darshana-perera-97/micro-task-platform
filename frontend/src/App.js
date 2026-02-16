@@ -88,13 +88,13 @@ function MainApp() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#fafafa]">
       <Navbar onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
       <div className="flex relative">
         {/* Mobile Overlay */}
         {sidebarOpen && (
           <div
-            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+            className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 lg:hidden"
             onClick={() => setSidebarOpen(false)}
           />
         )}
@@ -107,7 +107,7 @@ function MainApp() {
           role={user.role}
           isOpen={sidebarOpen}
         />
-        <main className="flex-1 p-4 sm:p-6 overflow-y-auto w-full lg:w-auto">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto w-full lg:w-auto bg-[#fafafa]">
           {renderView()}
         </main>
       </div>

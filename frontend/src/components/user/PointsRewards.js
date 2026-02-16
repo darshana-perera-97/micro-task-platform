@@ -14,6 +14,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { toast } from 'sonner';
+import { cn } from '../ui/utils';
 
 export function PointsRewards() {
   const { user } = useAuth();
@@ -48,51 +49,51 @@ export function PointsRewards() {
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-6 sm:space-y-8">
       <div>
-        <h2 className="text-xl sm:text-2xl font-semibold text-gray-900">Points & Rewards</h2>
-        <p className="text-sm sm:text-base text-gray-600">Manage your points and claim rewards</p>
+        <h2 className="text-2xl sm:text-3xl font-light text-black/90 mb-2">Points & Rewards</h2>
+        <p className="text-sm sm:text-base text-black/50 font-light">Manage your points and claim rewards</p>
       </div>
 
       {/* Points Overview */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-        <Card>
-          <CardContent className="p-4 sm:p-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <Card className="border-0 shadow-sm bg-white">
+          <CardContent className="p-5 sm:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs sm:text-sm text-gray-600">Current Points</p>
-                <p className="text-2xl sm:text-3xl font-bold text-blue-600 mt-1">{user.points}</p>
+                <p className="text-xs sm:text-sm text-black/50 font-light mb-1">Current Points</p>
+                <p className="text-2xl sm:text-3xl font-light text-black/90">{user.points}</p>
               </div>
-              <div className="bg-blue-50 p-2 sm:p-3 rounded-lg">
-                <Award className="size-5 sm:size-6 text-blue-600" />
+              <div className="bg-black/5 p-2.5 rounded-lg">
+                <Award className="size-5 text-black/60" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-4 sm:p-6">
+        <Card className="border-0 shadow-sm bg-white">
+          <CardContent className="p-5 sm:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs sm:text-sm text-gray-600">Total Earned</p>
-                <p className="text-2xl sm:text-3xl font-bold text-green-600 mt-1">{user.totalEarned}</p>
+                <p className="text-xs sm:text-sm text-black/50 font-light mb-1">Total Earned</p>
+                <p className="text-2xl sm:text-3xl font-light text-black/90">{user.totalEarned}</p>
               </div>
-              <div className="bg-green-50 p-2 sm:p-3 rounded-lg">
-                <TrendingUp className="size-5 sm:size-6 text-green-600" />
+              <div className="bg-black/5 p-2.5 rounded-lg">
+                <TrendingUp className="size-5 text-black/60" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-4 sm:p-6">
+        <Card className="border-0 shadow-sm bg-white">
+          <CardContent className="p-5 sm:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs sm:text-sm text-gray-600">Total Claims</p>
-                <p className="text-2xl sm:text-3xl font-bold text-purple-600 mt-1">{userClaims.length}</p>
+                <p className="text-xs sm:text-sm text-black/50 font-light mb-1">Total Claims</p>
+                <p className="text-2xl sm:text-3xl font-light text-black/90">{userClaims.length}</p>
               </div>
-              <div className="bg-purple-50 p-2 sm:p-3 rounded-lg">
-                <Gift className="size-5 sm:size-6 text-purple-600" />
+              <div className="bg-black/5 p-2.5 rounded-lg">
+                <Gift className="size-5 text-black/60" />
               </div>
             </div>
           </CardContent>
@@ -100,57 +101,61 @@ export function PointsRewards() {
       </div>
 
       {/* Claim Reward */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Claim Reward</CardTitle>
-          <CardDescription>
+      <Card className="border-0 shadow-sm bg-white">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-lg font-light text-black/90">Claim Reward</CardTitle>
+          <CardDescription className="text-black/50 font-light">
             Exchange 100 points for a reward
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
+        <CardContent className="space-y-5">
+          <div className="space-y-3">
             <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Progress to next reward</span>
-              <span className="font-semibold">{user.points} / 100 points</span>
+              <span className="text-black/50 font-light">Progress to next reward</span>
+              <span className="font-medium text-black/80">{user.points} / 100 points</span>
             </div>
-            <Progress value={progressPercentage} />
+            <Progress value={progressPercentage} className="h-2" />
           </div>
           <Button
             onClick={handleClaim}
             disabled={!canClaim}
-            className="w-full"
-            size="lg"
+            className={cn(
+              "w-full h-12 font-medium rounded-lg",
+              canClaim 
+                ? "bg-black hover:bg-black/90 text-white" 
+                : "bg-black/5 text-black/40 cursor-not-allowed"
+            )}
           >
-            {canClaim ? '🎉 Claim 100 Points Reward' : `Need ${100 - user.points} more points`}
+            {canClaim ? 'Claim 100 Points Reward' : `Need ${100 - user.points} more points`}
           </Button>
         </CardContent>
       </Card>
 
       {/* Claim History */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Claim History</CardTitle>
-          <CardDescription>Your reward claim history</CardDescription>
+      <Card className="border-0 shadow-sm bg-white">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-lg font-light text-black/90">Claim History</CardTitle>
+          <CardDescription className="text-black/50 font-light">Your reward claim history</CardDescription>
         </CardHeader>
         <CardContent>
           {userClaims.length === 0 ? (
-            <p className="text-sm sm:text-base text-gray-500 text-center py-6 sm:py-8">No claims yet</p>
+            <p className="text-sm sm:text-base text-black/40 text-center py-12 font-light">No claims yet</p>
           ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-xs sm:text-sm">Points Claimed</TableHead>
-                    <TableHead className="text-xs sm:text-sm">Date</TableHead>
+                  <TableRow className="border-b border-black/5">
+                    <TableHead className="text-xs sm:text-sm text-black/50 font-medium">Points Claimed</TableHead>
+                    <TableHead className="text-xs sm:text-sm text-black/50 font-medium">Date</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {userClaims.map((claim) => (
-                    <TableRow key={claim.id}>
-                      <TableCell className="text-xs sm:text-sm font-semibold text-purple-600">
+                    <TableRow key={claim.id} className="border-b border-black/5 hover:bg-black/5">
+                      <TableCell className="text-xs sm:text-sm font-medium text-black/70">
                         {claim.points} points
                       </TableCell>
-                      <TableCell className="text-xs sm:text-sm whitespace-nowrap">
+                      <TableCell className="text-xs sm:text-sm whitespace-nowrap text-black/50 font-light">
                         {new Date(claim.claimedAt).toLocaleString()}
                       </TableCell>
                     </TableRow>

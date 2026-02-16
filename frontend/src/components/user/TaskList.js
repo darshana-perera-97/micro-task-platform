@@ -6,6 +6,7 @@ import { Youtube, Share2, Globe, FileText } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
 import { TaskDetailsModal } from './TaskDetailsModal';
+import { cn } from '../ui/utils';
 
 export function TaskList() {
   const { tasks, submissions } = useData();
@@ -45,13 +46,13 @@ export function TaskList() {
 
   return (
     <>
-      <div className="space-y-4 sm:space-y-6">
+      <div className="space-y-6 sm:space-y-8">
         <div>
-          <h2 className="text-xl sm:text-2xl font-semibold text-gray-900">Available Tasks</h2>
-          <p className="text-sm sm:text-base text-gray-600">Complete tasks to earn points and rewards</p>
+          <h2 className="text-2xl sm:text-3xl font-light text-black/90 mb-2">Available Tasks</h2>
+          <p className="text-sm sm:text-base text-black/50 font-light">Complete tasks to earn points and rewards</p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {activeTasks.map((task) => {
             const Icon = getTaskIcon(task.type);
             const status = getTaskStatus(task.id);
@@ -59,31 +60,38 @@ export function TaskList() {
             const canSubmit = status === 'new' || status === 'rejected';
 
             return (
-              <Card key={task.id} className="flex flex-col">
+              <Card key={task.id} className="flex flex-col border-0 shadow-sm hover:shadow-md transition-shadow">
                 <CardHeader>
                   <div className="flex items-start justify-between">
-                    <div className="bg-blue-50 p-2 rounded-lg">
-                      <Icon className="size-6 text-blue-600" />
+                    <div className="bg-black/5 p-2.5 rounded-lg">
+                      <Icon className="size-5 text-black/60" />
                     </div>
-                    <Badge variant={statusBadge.variant}>{statusBadge.label}</Badge>
+                    <Badge variant={statusBadge.variant} className="bg-black/5 text-black/60 border-0 text-xs font-normal">
+                      {statusBadge.label}
+                    </Badge>
                   </div>
-                  <CardTitle className="text-lg mt-3">{task.title}</CardTitle>
-                  <CardDescription className="line-clamp-2">{task.description}</CardDescription>
+                  <CardTitle className="text-lg mt-4 font-medium text-black/80">{task.title}</CardTitle>
+                  <CardDescription className="line-clamp-2 text-black/50 text-sm font-light">{task.description}</CardDescription>
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col justify-end">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
-                      <span className="text-2xl font-bold text-blue-600">{task.points}</span>
-                      <span className="text-sm text-gray-600">points</span>
+                      <span className="text-2xl font-light text-black/90">{task.points}</span>
+                      <span className="text-sm text-black/50 font-light">points</span>
                     </div>
-                    <Badge variant="outline" className="text-xs">
+                    <Badge variant="outline" className="text-xs bg-black/5 text-black/50 border-0 font-normal">
                       {task.type.replace('_', ' ')}
                     </Badge>
                   </div>
                   <Button
                     onClick={() => setSelectedTask(task)}
                     variant={canSubmit ? 'default' : 'outline'}
-                    className="w-full"
+                    className={cn(
+                      "w-full h-10 font-medium rounded-lg",
+                      canSubmit 
+                        ? "bg-black hover:bg-black/90 text-white" 
+                        : "bg-white border border-black/10 hover:bg-black/5 text-black/70"
+                    )}
                   >
                     {status === 'approved' ? 'View Details' : canSubmit ? 'View Task' : 'View Status'}
                   </Button>
@@ -94,10 +102,10 @@ export function TaskList() {
         </div>
 
         {activeTasks.length === 0 && (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <p className="text-gray-500">No active tasks available at the moment.</p>
-              <p className="text-sm text-gray-400 mt-1">Check back soon for new opportunities!</p>
+          <Card className="border-0 shadow-sm bg-white">
+            <CardContent className="py-16 text-center">
+              <p className="text-black/50 font-light">No active tasks available at the moment.</p>
+              <p className="text-sm text-black/40 font-light mt-2">Check back soon for new opportunities!</p>
             </CardContent>
           </Card>
         )}

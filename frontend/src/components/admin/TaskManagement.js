@@ -39,21 +39,21 @@ export function TaskManagement() {
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-6 sm:space-y-8">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
         <div>
-          <h2 className="text-xl sm:text-2xl font-semibold text-gray-900">Task Management</h2>
-          <p className="text-sm sm:text-base text-gray-600">Create and manage tasks</p>
+          <h2 className="text-2xl sm:text-3xl font-light text-black/90 mb-2">Task Management</h2>
+          <p className="text-sm sm:text-base text-black/50 font-light">Create and manage tasks</p>
         </div>
-        <Button onClick={() => setIsCreating(!isCreating)} className="w-full sm:w-auto">
+        <Button onClick={() => setIsCreating(!isCreating)} className="w-full sm:w-auto bg-black hover:bg-black/90 text-white">
           {isCreating ? 'Cancel' : 'Create New Task'}
         </Button>
       </div>
 
       {isCreating && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Create New Task</CardTitle>
+        <Card className="border-0 shadow-sm bg-white">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-lg font-light text-black/90">Create New Task</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>

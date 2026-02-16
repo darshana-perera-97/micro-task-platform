@@ -34,21 +34,23 @@ export function Navbar({ onMenuClick }) {
   const roleBadge = getRoleBadge();
 
   return (
-    <nav className="bg-white border-b border-gray-200 px-3 sm:px-4 py-3 sticky top-0 z-30">
+    <nav className="bg-white/80 backdrop-blur-md border-b border-black/5 px-4 sm:px-6 py-4 sticky top-0 z-30">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-3 sm:gap-4">
           <Button
             variant="ghost"
             size="icon"
-            className="lg:hidden"
+            className="lg:hidden hover:bg-black/5"
             onClick={onMenuClick}
           >
-            <Menu className="size-5" />
+            <Menu className="size-5 text-black/60" />
           </Button>
-          <Award className="size-6 sm:size-8 text-blue-600" />
+          <div className="p-1.5 bg-black/5 rounded-lg">
+            <Award className="size-5 sm:size-6 text-black/70" />
+          </div>
           <div>
-            <h1 className="text-sm sm:text-base font-semibold text-gray-900">Task & Reward Platform</h1>
-            <Badge variant={roleBadge.variant} className="text-xs hidden sm:inline-block">
+            <h1 className="text-sm sm:text-base font-light text-black/80">Task & Reward</h1>
+            <Badge variant={roleBadge.variant} className="text-xs hidden sm:inline-block bg-black/5 text-black/60 border-0 font-normal">
               {roleBadge.label}
             </Badge>
           </div>
@@ -56,42 +58,42 @@ export function Navbar({ onMenuClick }) {
 
         <div className="flex items-center gap-2 sm:gap-3">
           {user.role === 'user' && (
-            <div className="hidden sm:flex items-center gap-2 px-2 sm:px-3 py-1.5 bg-blue-50 rounded-lg">
-              <Award className="size-4 text-blue-600" />
-              <span className="text-xs sm:text-sm font-semibold text-blue-900">{user.points} Points</span>
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-black/5 rounded-lg">
+              <Award className="size-4 text-black/50" />
+              <span className="text-xs sm:text-sm font-medium text-black/70">{user.points} Points</span>
             </div>
           )}
 
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="size-4 sm:size-5" />
-            <span className="absolute top-1 right-1 size-2 bg-red-500 rounded-full"></span>
+          <Button variant="ghost" size="icon" className="relative hover:bg-black/5">
+            <Bell className="size-4 sm:size-5 text-black/60" />
+            <span className="absolute top-1.5 right-1.5 size-2 bg-red-400 rounded-full"></span>
           </Button>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-8 sm:h-10 gap-1 sm:gap-2">
-                <Avatar className="size-6 sm:size-8">
-                  <AvatarFallback className="bg-blue-100 text-blue-700 text-xs sm:text-sm">
+              <Button variant="ghost" className="relative h-9 sm:h-10 gap-2 hover:bg-black/5">
+                <Avatar className="size-7 sm:size-8">
+                  <AvatarFallback className="bg-black/5 text-black/60 text-xs sm:text-sm font-medium">
                     {getInitials(user.name)}
                   </AvatarFallback>
                 </Avatar>
-                <span className="hidden md:inline text-sm">{user.name}</span>
+                <span className="hidden md:inline text-sm font-light text-black/70">{user.name}</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuContent align="end" className="w-56 bg-white border-black/10 shadow-lg">
               <DropdownMenuLabel>
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium">{user.name}</p>
-                  <p className="text-xs text-gray-500">{user.email}</p>
+                  <p className="text-sm font-medium text-black/80">{user.name}</p>
+                  <p className="text-xs text-black/50">{user.email}</p>
                 </div>
               </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <User className="size-4 mr-2" />
-                Profile
+              <DropdownMenuSeparator className="bg-black/5" />
+              <DropdownMenuItem className="hover:bg-black/5">
+                <User className="size-4 mr-2 text-black/60" />
+                <span className="text-black/70">Profile</span>
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={logout} className="text-red-600">
+              <DropdownMenuSeparator className="bg-black/5" />
+              <DropdownMenuItem onClick={logout} className="text-red-500 hover:bg-red-50">
                 <LogOut className="size-4 mr-2" />
                 Logout
               </DropdownMenuItem>

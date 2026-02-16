@@ -6,7 +6,7 @@ function Card({ className, ...props }) {
     <div
       data-slot="card"
       className={cn(
-        "bg-card text-card-foreground flex flex-col gap-6 rounded-xl border",
+        "bg-white text-card-foreground flex flex-col gap-6 rounded-lg border-0 shadow-sm",
         className,
       )}
       {...props}
@@ -19,7 +19,7 @@ function CardHeader({ className, ...props }) {
     <div
       data-slot="card-header"
       className={cn(
-        "grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 pt-6",
+        "grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-5 pt-5",
         className,
       )}
       {...props}
@@ -51,7 +51,7 @@ function CardContent({ className, ...props }) {
   return (
     <div
       data-slot="card-content"
-      className={cn("px-6 [&:last-child]:pb-6", className)}
+      className={cn("px-5 [&:last-child]:pb-5", className)}
       {...props}
     />
   );
