@@ -6,15 +6,10 @@ const { allowRoles } = require('../middleware/role.middleware');
 
 // All QA routes require authentication and QA role
 router.use(verifyToken);
-router.use(allowRoles(['qa', 'admin'])); // Admin can also access QA routes
+router.use(allowRoles(['qa', 'admin']));
 
-// Get submissions by status
 router.get('/submissions', getSubmissionsByStatus);
-
-// Approve submission
 router.post('/submissions/:id/approve', approveSubmission);
-
-// Reject submission
 router.post('/submissions/:id/reject', rejectSubmission);
 
 module.exports = router;

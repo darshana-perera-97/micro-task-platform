@@ -1,4 +1,3 @@
-const { v4: uuidv4 } = require('uuid');
 const { readJSON, writeJSON } = require('../utils/fileHandler');
 
 /**
@@ -7,10 +6,11 @@ const { readJSON, writeJSON } = require('../utils/fileHandler');
 const getUserPoints = (req, res) => {
   try {
     const userId = req.user.id;
-
     const users = readJSON('users');
-    const user = users.find(u => u.id === userId);
+    const points = readJSON('points');
+    const claims = readJSON('claims');
 
+    const user = users.find(u => u.id === userId);
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -18,21 +18,16 @@ const getUserPoints = (req, res) => {
       });
     }
 
-    // Get points history
-    const points = readJSON('points');
     const userPoints = points.filter(p => p.userId === userId);
-
-    // Get claim history
-    const claims = readJSON('claims');
     const userClaims = claims.filter(c => c.userId === userId);
 
     res.json({
       success: true,
       data: {
-        currentPoints: user.points,
-        totalEarned: user.totalEarned,
-        pointsHistory: userPoints,
-        claimsHistory: userClaims,
+        points: user.points || 0,
+        totalEarned: user.totalEarned || 0,
+        history: userPoints,
+        claims: userClaims,
       },
     });
   } catch (error) {
@@ -45,68 +40,101 @@ const getUserPoints = (req, res) => {
 };
 
 /**
- * Claim reward (100 points)
+ * Claim 100 points reward
  */
 const claimReward = (req, res) => {
   try {
     const userId = req.user.id;
-    const claimAmount = 100;
-
     const users = readJSON('users');
-    const userIndex = users.findIndex(u => u.id === userId);
+    const claims = readJSON('claims');
+    const points = readJSON('points');
 
-    if (userIndex === -1) {
+    const user = users.find(u => u.id === userId);
+    if (!user) {
       return res.status(404).json({
         success: false,
         message: 'User not found',
       });
     }
 
-    const user = users[userIndex];
-
-    // Check if user has enough points
-    if (user.points < claimAmount) {
+    // Check if user has enough APPROVED points (100 required)
+    // Note: user.points only contains points from approved tasks (awarded by QA)
+    // Pending submissions do NOT contribute to claimable points
+    const approvedPoints = user.points || 0;
+    if (approvedPoints < 100) {
       return res.status(400).json({
         success: false,
-        message: `Insufficient points. You need ${claimAmount} points to claim a reward. Current: ${user.points}`,
+        message: 'Insufficient points. You need at least 100 approved points to claim a reward. Points from pending submissions cannot be claimed until they are approved by QA.',
       });
     }
 
-    // Deduct points
-    users[userIndex].points -= claimAmount;
+    // Check if user already claimed today
+    // Get today's date in YYYY-MM-DD format (UTC)
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0]; // e.g., "2026-02-16"
+    
+    // Get user's claims
+    const userClaims = claims.filter(c => c.userId === userId);
+    
+    // Check if user has claimed today
+    const todayClaim = userClaims.find(c => {
+      if (!c.claimedAt) return false;
+      
+      try {
+        // Parse the claim date and get YYYY-MM-DD format
+        const claimDate = new Date(c.claimedAt);
+        const claimDateStr = claimDate.toISOString().split('T')[0];
+        
+        // Compare dates (YYYY-MM-DD format)
+        return claimDateStr === todayStr;
+      } catch (error) {
+        console.error('Error parsing claim date:', c.claimedAt, error);
+        return false;
+      }
+    });
+
+    if (todayClaim) {
+      console.log(`User ${userId} already claimed today. Last claim: ${todayClaim.claimedAt}, Today: ${todayStr}`);
+      return res.status(400).json({
+        success: false,
+        message: 'You have already claimed your reward today. Come back tomorrow!',
+      });
+    }
+    
+    console.log(`User ${userId} can claim. Today: ${todayStr}, User claims count: ${userClaims.length}`);
+
+    // Deduct 100 points
+    user.points = (user.points || 0) - 100;
     writeJSON('users', users);
 
     // Create claim record
-    const claims = readJSON('claims');
     const newClaim = {
-      id: uuidv4(),
+      id: `claim-${Date.now()}`,
       userId,
-      points: claimAmount,
+      points: 100,
       claimedAt: new Date().toISOString(),
-      status: 'success',
     };
-
     claims.push(newClaim);
     writeJSON('claims', claims);
 
-    // Record points transaction
-    const points = readJSON('points');
-    points.push({
-      id: uuidv4(),
+    // Add to points history
+    const pointRecord = {
+      id: `point-${Date.now()}`,
       userId,
-      points: -claimAmount,
-      type: 'claimed',
-      claimId: newClaim.id,
+      amount: -100,
+      type: 'claim',
+      description: 'Claimed 100 points reward',
       createdAt: new Date().toISOString(),
-    });
+    };
+    points.push(pointRecord);
     writeJSON('points', points);
 
     res.json({
       success: true,
-      message: `Successfully claimed ${claimAmount} points reward!`,
+      message: 'Reward claimed successfully!',
       data: {
+        remainingPoints: user.points,
         claim: newClaim,
-        remainingPoints: users[userIndex].points,
       },
     });
   } catch (error) {

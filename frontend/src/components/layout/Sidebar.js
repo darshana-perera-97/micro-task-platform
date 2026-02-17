@@ -1,4 +1,5 @@
 import React from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   ListTodo, 
@@ -9,34 +10,44 @@ import {
   CheckSquare,
   XSquare,
   Settings,
-  Users
+  Users,
+  Gift
 } from 'lucide-react';
 import { cn } from '../ui/utils';
 
-export function Sidebar({ currentView, onViewChange, role, isOpen = false }) {
+export function Sidebar({ role, isOpen = false, onClose }) {
+  const location = useLocation();
+
   const userMenuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'tasks', label: 'Tasks', icon: ListTodo },
-    { id: 'submissions', label: 'My Submissions', icon: FileCheck },
-    { id: 'points', label: 'Points & Rewards', icon: Award },
-    { id: 'profile', label: 'Profile', icon: User },
+    { path: '/user/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/user/tasks', label: 'Tasks', icon: ListTodo },
+    { path: '/user/submissions', label: 'My Submissions', icon: FileCheck },
+    { path: '/user/points', label: 'Points & Rewards', icon: Award },
+    { path: '/user/profile', label: 'Profile', icon: User },
   ];
 
   const qaMenuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'pending', label: 'Pending Reviews', icon: ClipboardCheck },
-    { id: 'approved', label: 'Approved', icon: CheckSquare },
-    { id: 'rejected', label: 'Rejected', icon: XSquare },
+    { path: '/qa/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/qa/pending', label: 'Pending Reviews', icon: ClipboardCheck },
+    { path: '/qa/approved', label: 'Approved', icon: CheckSquare },
+    { path: '/qa/rejected', label: 'Rejected', icon: XSquare },
   ];
 
   const adminMenuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'tasks', label: 'Task Management', icon: Settings },
-    { id: 'users', label: 'Users', icon: Users },
-    { id: 'submissions', label: 'All Submissions', icon: FileCheck },
+    { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/admin/tasks', label: 'Task Management', icon: Settings },
+    { path: '/admin/users', label: 'Users', icon: Users },
+    { path: '/admin/submissions', label: 'All Submissions', icon: FileCheck },
+    { path: '/admin/claims', label: 'Claims', icon: Gift },
   ];
 
   const menuItems = role === 'admin' ? adminMenuItems : role === 'qa' ? qaMenuItems : userMenuItems;
+
+  const handleLinkClick = () => {
+    if (onClose) {
+      onClose();
+    }
+  };
 
   return (
     <>
@@ -50,12 +61,13 @@ export function Sidebar({ currentView, onViewChange, role, isOpen = false }) {
         <nav className="p-4 space-y-1">
           {menuItems.map((item) => {
             const Icon = item.icon;
-            const isActive = currentView === item.id;
+            const isActive = location.pathname === item.path;
             
             return (
-              <button
-                key={item.id}
-                onClick={() => onViewChange(item.id)}
+              <NavLink
+                key={item.path}
+                to={item.path}
+                onClick={handleLinkClick}
                 className={cn(
                   'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200',
                   isActive
@@ -65,23 +77,25 @@ export function Sidebar({ currentView, onViewChange, role, isOpen = false }) {
               >
                 <Icon className="size-4" />
                 {item.label}
-              </button>
+              </NavLink>
             );
           })}
         </nav>
       </aside>
 
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:block w-64 bg-white/50 backdrop-blur-sm border-r border-black/5 min-h-screen p-5">
+      <aside className={cn(
+        "hidden lg:block w-64 bg-white/50 backdrop-blur-sm border-r border-black/5 p-5 fixed top-[73px] left-0 h-[calc(100vh-73px)] z-20 overflow-y-auto"
+      )}>
         <nav className="space-y-1">
           {menuItems.map((item) => {
             const Icon = item.icon;
-            const isActive = currentView === item.id;
+            const isActive = location.pathname === item.path;
             
             return (
-              <button
-                key={item.id}
-                onClick={() => onViewChange(item.id)}
+              <NavLink
+                key={item.path}
+                to={item.path}
                 className={cn(
                   'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200',
                   isActive
@@ -91,7 +105,7 @@ export function Sidebar({ currentView, onViewChange, role, isOpen = false }) {
               >
                 <Icon className="size-4" />
                 {item.label}
-              </button>
+              </NavLink>
             );
           })}
         </nav>

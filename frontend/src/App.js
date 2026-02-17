@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { DataProvider } from './context/DataContext';
 import { LoginPage } from './components/auth/LoginPage';
 import { Navbar } from './components/layout/Navbar';
 import { Sidebar } from './components/layout/Sidebar';
 import { Toaster } from './components/ui/sonner';
+import { cn } from './components/ui/utils';
+import { ProtectedRoute } from './components/routing/ProtectedRoute';
+import { RoleRedirect } from './components/routing/RoleRedirect';
 
 // User Components
 import { UserDashboard } from './components/user/UserDashboard';
@@ -23,69 +27,11 @@ import { AdminDashboard } from './components/admin/AdminDashboard';
 import { TaskManagement } from './components/admin/TaskManagement';
 import { UserManagement } from './components/admin/UserManagement';
 import { AllSubmissions } from './components/admin/AllSubmissions';
+import { AllClaims } from './components/admin/AllClaims';
 
-function MainApp() {
-  const { user, isAuthenticated } = useAuth();
-  const [currentView, setCurrentView] = useState('dashboard');
+function AppLayout({ children }) {
+  const { user } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  if (!isAuthenticated || !user) {
-    return <LoginPage />;
-  }
-
-  const renderView = () => {
-    // User Views
-    if (user.role === 'user') {
-      switch (currentView) {
-        case 'dashboard':
-          return <UserDashboard />;
-        case 'tasks':
-          return <TaskList />;
-        case 'submissions':
-          return <SubmissionsList />;
-        case 'points':
-          return <PointsRewards />;
-        case 'profile':
-          return <UserProfile />;
-        default:
-          return <UserDashboard />;
-      }
-    }
-
-    // QA Views
-    if (user.role === 'qa') {
-      switch (currentView) {
-        case 'dashboard':
-          return <QADashboard />;
-        case 'pending':
-          return <PendingReviews />;
-        case 'approved':
-          return <ReviewedSubmissions status="approved" />;
-        case 'rejected':
-          return <ReviewedSubmissions status="rejected" />;
-        default:
-          return <QADashboard />;
-      }
-    }
-
-    // Admin Views
-    if (user.role === 'admin') {
-      switch (currentView) {
-        case 'dashboard':
-          return <AdminDashboard />;
-        case 'tasks':
-          return <TaskManagement />;
-        case 'users':
-          return <UserManagement />;
-        case 'submissions':
-          return <AllSubmissions />;
-        default:
-          return <AdminDashboard />;
-      }
-    }
-
-    return <UserDashboard />;
-  };
 
   return (
     <div className="min-h-screen bg-[#fafafa]">
@@ -99,29 +45,103 @@ function MainApp() {
           />
         )}
         <Sidebar
-          currentView={currentView}
-          onViewChange={(view) => {
-            setCurrentView(view);
-            setSidebarOpen(false);
-          }}
           role={user.role}
           isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
         />
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto w-full lg:w-auto bg-[#fafafa]">
-          {renderView()}
+        <main className={cn(
+          "flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto w-full bg-[#fafafa] lg:ml-64"
+        )}>
+          {children}
         </main>
       </div>
     </div>
   );
 }
 
+function AppRoutes() {
+  return (
+    <Routes>
+      {/* Public Routes */}
+      <Route path="/login" element={<LoginPage />} />
+      
+      {/* Root redirect */}
+      <Route path="/" element={<RoleRedirect />} />
+
+      {/* User Routes */}
+      <Route
+        path="/user"
+        element={
+          <ProtectedRoute allowedRoles={['user']}>
+            <AppLayout>
+              <Outlet />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      >
+        <Route path="dashboard" element={<UserDashboard />} />
+        <Route path="tasks" element={<TaskList />} />
+        <Route path="submissions" element={<SubmissionsList />} />
+        <Route path="points" element={<PointsRewards />} />
+        <Route path="profile" element={<UserProfile />} />
+        <Route index element={<Navigate to="/user/dashboard" replace />} />
+        <Route path="*" element={<Navigate to="/user/dashboard" replace />} />
+      </Route>
+
+      {/* QA Routes */}
+      <Route
+        path="/qa"
+        element={
+          <ProtectedRoute allowedRoles={['qa']}>
+            <AppLayout>
+              <Outlet />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      >
+        <Route path="dashboard" element={<QADashboard />} />
+        <Route path="pending" element={<PendingReviews />} />
+        <Route path="approved" element={<ReviewedSubmissions status="approved" />} />
+        <Route path="rejected" element={<ReviewedSubmissions status="rejected" />} />
+        <Route index element={<Navigate to="/qa/dashboard" replace />} />
+        <Route path="*" element={<Navigate to="/qa/dashboard" replace />} />
+      </Route>
+
+      {/* Admin Routes */}
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AppLayout>
+              <Outlet />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      >
+        <Route path="dashboard" element={<AdminDashboard />} />
+        <Route path="tasks" element={<TaskManagement />} />
+        <Route path="users" element={<UserManagement />} />
+        <Route path="submissions" element={<AllSubmissions />} />
+        <Route path="claims" element={<AllClaims />} />
+        <Route index element={<Navigate to="/admin/dashboard" replace />} />
+        <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
+      </Route>
+
+      {/* Catch all - redirect to login */}
+      <Route path="*" element={<Navigate to="/login" replace />} />
+    </Routes>
+  );
+}
+
 export default function App() {
   return (
-    <AuthProvider>
-      <DataProvider>
-        <MainApp />
-        <Toaster position="top-right" />
-      </DataProvider>
-    </AuthProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <DataProvider>
+          <AppRoutes />
+          <Toaster position="top-right" />
+        </DataProvider>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }

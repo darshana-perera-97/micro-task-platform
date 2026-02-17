@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Bell, User, LogOut, Award, Menu } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Avatar, AvatarFallback } from '../ui/avatar';
@@ -15,6 +16,21 @@ import { Badge } from '../ui/badge';
 
 export function Navbar({ onMenuClick }) {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login', { replace: true });
+  };
+
+  const handleProfileClick = () => {
+    const roleProfile = {
+      admin: '/admin/users',
+      qa: '/qa/dashboard',
+      user: '/user/profile',
+    };
+    navigate(roleProfile[user?.role] || '/');
+  };
 
   if (!user) return null;
 
@@ -34,7 +50,7 @@ export function Navbar({ onMenuClick }) {
   const roleBadge = getRoleBadge();
 
   return (
-    <nav className="bg-white/80 backdrop-blur-md border-b border-black/5 px-4 sm:px-6 py-4 sticky top-0 z-30">
+    <nav className="bg-white/80 backdrop-blur-md border-b border-black/5 px-4 sm:px-6 py-4 sticky top-0 z-30 w-full">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3 sm:gap-4">
           <Button
@@ -88,12 +104,12 @@ export function Navbar({ onMenuClick }) {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator className="bg-black/5" />
-              <DropdownMenuItem className="hover:bg-black/5">
+              <DropdownMenuItem onClick={handleProfileClick} className="hover:bg-black/5">
                 <User className="size-4 mr-2 text-black/60" />
                 <span className="text-black/70">Profile</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-black/5" />
-              <DropdownMenuItem onClick={logout} className="text-red-500 hover:bg-red-50">
+              <DropdownMenuItem onClick={handleLogout} className="text-red-500 hover:bg-red-50">
                 <LogOut className="size-4 mr-2" />
                 Logout
               </DropdownMenuItem>

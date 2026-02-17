@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -11,7 +12,22 @@ export function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, user, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      const roleDashboard = {
+        admin: '/admin/dashboard',
+        qa: '/qa/dashboard',
+        user: '/user/dashboard',
+      };
+      const from = location.state?.from?.pathname;
+      navigate(from || roleDashboard[user.role] || '/', { replace: true });
+    }
+  }, [isAuthenticated, user, navigate, location]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -21,6 +37,7 @@ export function LoginPage() {
       const success = await login(email, password);
       if (success) {
         toast.success('Login successful!');
+        // Navigation will happen via useEffect when user state updates
       } else {
         toast.error('Invalid credentials. Please try again.');
       }

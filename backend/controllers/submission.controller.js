@@ -19,7 +19,9 @@ const createSubmission = (req, res) => {
 
     // Check if task exists and is active
     const tasks = readJSON('tasks');
-    const task = tasks.find(t => t.id === taskId);
+    const addedTasks = readJSON('addedTasks');
+    const allTasks = [...tasks, ...addedTasks];
+    const task = allTasks.find(t => t.id === taskId);
 
     if (!task) {
       return res.status(404).json({
@@ -35,28 +37,16 @@ const createSubmission = (req, res) => {
       });
     }
 
-    // Check for duplicate submission (prevent same user submitting same task twice)
+    // Check if user has already submitted this task (any status - one attempt only)
     const submissions = readJSON('submissions');
     const existingSubmission = submissions.find(
-      sub => sub.taskId === taskId && sub.userId === userId && sub.status === 'pending'
+      sub => sub.taskId === taskId && sub.userId === userId
     );
 
     if (existingSubmission) {
       return res.status(400).json({
         success: false,
-        message: 'You already have a pending submission for this task',
-      });
-    }
-
-    // Check if user already completed this task
-    const completedSubmission = submissions.find(
-      sub => sub.taskId === taskId && sub.userId === userId && sub.status === 'approved'
-    );
-
-    if (completedSubmission) {
-      return res.status(400).json({
-        success: false,
-        message: 'You have already completed this task',
+        message: 'You have already submitted this task. Each task can only be completed once.',
       });
     }
 
@@ -69,7 +59,7 @@ const createSubmission = (req, res) => {
       id: uuidv4(),
       taskId,
       userId,
-      userName: user.name,
+      userName: user?.name || 'Unknown',
       taskTitle: task.title,
       evidence: {
         image: evidence.image || '',
@@ -108,9 +98,7 @@ const getUserSubmissions = (req, res) => {
   try {
     const userId = req.user.id;
     const submissions = readJSON('submissions');
-    const userSubmissions = submissions
-      .filter(sub => sub.userId === userId)
-      .sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+    const userSubmissions = submissions.filter(sub => sub.userId === userId);
 
     res.json({
       success: true,
@@ -126,47 +114,8 @@ const getUserSubmissions = (req, res) => {
   }
 };
 
-/**
- * Get submission by ID
- */
-const getSubmissionById = (req, res) => {
-  try {
-    const { id } = req.params;
-    const userId = req.user.id;
-    const submissions = readJSON('submissions');
-    const submission = submissions.find(sub => sub.id === id);
-
-    if (!submission) {
-      return res.status(404).json({
-        success: false,
-        message: 'Submission not found',
-      });
-    }
-
-    // Users can only view their own submissions
-    if (submission.userId !== userId && req.user.role !== 'admin' && req.user.role !== 'qa') {
-      return res.status(403).json({
-        success: false,
-        message: 'Access denied',
-      });
-    }
-
-    res.json({
-      success: true,
-      data: submission,
-    });
-  } catch (error) {
-    console.error('Get submission by ID error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching submission',
-    });
-  }
-};
-
 module.exports = {
   createSubmission,
   getUserSubmissions,
-  getSubmissionById,
 };
 

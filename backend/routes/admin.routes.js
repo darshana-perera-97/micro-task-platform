@@ -4,13 +4,10 @@ const {
   createTask,
   getAllTasks,
   updateTask,
-  deleteTask,
+  getAdminAnalytics,
   getAllUsers,
-  getAllSubmissions,
-  createOperator,
-  getPendingUsers,
-  approveUser,
   updateUserStatus,
+  getAllClaims,
 } = require('../controllers/admin.controller');
 const { verifyToken } = require('../middleware/auth.middleware');
 const { allowRoles } = require('../middleware/role.middleware');
@@ -23,19 +20,16 @@ router.use(allowRoles(['admin']));
 router.post('/tasks', createTask);
 router.get('/tasks', getAllTasks);
 router.put('/tasks/:id', updateTask);
-router.delete('/tasks/:id', deleteTask);
+
+// Analytics
+router.get('/analytics', getAdminAnalytics);
 
 // User management
 router.get('/users', getAllUsers);
-router.get('/users/pending', getPendingUsers);
-router.post('/users/:id/approve', approveUser);
 router.put('/users/:id/status', updateUserStatus);
 
-// Operator management
-router.post('/operators', createOperator);
-
-// Submission management
-router.get('/submissions', getAllSubmissions);
+// Claims management
+router.get('/claims', getAllClaims);
 
 module.exports = router;
 

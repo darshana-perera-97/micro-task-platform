@@ -6,7 +6,29 @@ const { readJSON } = require('../utils/fileHandler');
 const getActiveTasks = (req, res) => {
   try {
     const tasks = readJSON('tasks');
-    const activeTasks = tasks.filter(task => task.active === true);
+    const addedTasks = readJSON('addedTasks');
+    
+    // Ensure both are arrays
+    const tasksArray = Array.isArray(tasks) ? tasks : [];
+    const addedTasksArray = Array.isArray(addedTasks) ? addedTasks : [];
+    
+    // Combine both sources
+    const allTasksMap = new Map();
+    tasksArray.forEach(task => {
+      if (task && task.id) {
+        allTasksMap.set(task.id, task);
+      }
+    });
+    addedTasksArray.forEach(task => {
+      if (task && task.id) {
+        allTasksMap.set(task.id, task);
+      }
+    });
+    
+    const allTasks = Array.from(allTasksMap.values());
+    const activeTasks = allTasks.filter(task => task && task.active === true);
+
+    console.log(`getActiveTasks: Found ${tasksArray.length} tasks, ${addedTasksArray.length} addedTasks, ${activeTasks.length} active tasks`);
 
     res.json({
       success: true,
@@ -29,7 +51,10 @@ const getTaskById = (req, res) => {
   try {
     const { id } = req.params;
     const tasks = readJSON('tasks');
-    const task = tasks.find(t => t.id === id);
+    const addedTasks = readJSON('addedTasks');
+    
+    const allTasks = [...tasks, ...addedTasks];
+    const task = allTasks.find(t => t.id === id);
 
     if (!task) {
       return res.status(404).json({

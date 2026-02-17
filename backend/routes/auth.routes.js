@@ -7,7 +7,7 @@ const { verifyToken } = require('../middleware/auth.middleware');
 router.post('/register', register);
 router.post('/login', login);
 
-// Protected routes
+// Protected route
 router.get('/profile', verifyToken, getProfile);
 
 module.exports = router;

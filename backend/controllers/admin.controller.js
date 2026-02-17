@@ -6,7 +6,7 @@ const { readJSON, writeJSON } = require('../utils/fileHandler');
  */
 const createTask = (req, res) => {
   try {
-    const { title, type, description, instructions, points, active = true } = req.body;
+    const { title, type, description, instructions, points, active = true, evidenceType = 'text', completedAmount = 0 } = req.body;
 
     // Validation
     if (!title || !type || !description || !points) {
@@ -24,6 +24,14 @@ const createTask = (req, res) => {
       });
     }
 
+    const validEvidenceTypes = ['text', 'url', 'image'];
+    if (evidenceType && !validEvidenceTypes.includes(evidenceType)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid evidence type. Must be one of: ${validEvidenceTypes.join(', ')}`,
+      });
+    }
+
     // Create new task
     const newTask = {
       id: uuidv4(),
@@ -33,13 +41,27 @@ const createTask = (req, res) => {
       instructions: instructions || description,
       points: parseInt(points),
       active: active === true || active === 'true',
+      evidenceType: evidenceType || 'text',
+      completedAmount: parseInt(completedAmount) || 0,
       createdAt: new Date().toISOString(),
     };
 
-    // Save task
-    const tasks = readJSON('tasks');
-    tasks.push(newTask);
-    writeJSON('tasks', tasks);
+    // Save task to addedTasks.json
+    const addedTasks = readJSON('addedTasks');
+    // Ensure addedTasks is an array
+    const tasksArray = Array.isArray(addedTasks) ? addedTasks : [];
+    tasksArray.push(newTask);
+    
+    const writeSuccess = writeJSON('addedTasks', tasksArray);
+    if (!writeSuccess) {
+      console.error('Failed to write to addedTasks.json');
+      return res.status(500).json({
+        success: false,
+        message: 'Error saving task to file',
+      });
+    }
+    
+    console.log(`Task saved to addedTasks.json. Total tasks: ${tasksArray.length}`);
 
     res.status(201).json({
       success: true,
@@ -56,12 +78,42 @@ const createTask = (req, res) => {
 };
 
 /**
- * Get all tasks (Admin only)
+ * Get all tasks (Admin only) - Returns tasks from addedTasks.json
  */
 const getAllTasks = (req, res) => {
   try {
+    const addedTasks = readJSON('addedTasks');
     const tasks = readJSON('tasks');
-    const sortedTasks = tasks.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    
+    // Ensure both are arrays
+    const tasksArray = Array.isArray(tasks) ? tasks : [];
+    const addedTasksArray = Array.isArray(addedTasks) ? addedTasks : [];
+    
+    // Combine both addedTasks and tasks, removing duplicates by ID
+    const allTasksMap = new Map();
+    
+    // Add tasks from tasks.json first
+    tasksArray.forEach(task => {
+      if (task && task.id) {
+        allTasksMap.set(task.id, task);
+      }
+    });
+    
+    // Add/override with tasks from addedTasks.json
+    addedTasksArray.forEach(task => {
+      if (task && task.id) {
+        allTasksMap.set(task.id, task);
+      }
+    });
+    
+    const allTasks = Array.from(allTasksMap.values());
+    const sortedTasks = allTasks.sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt) : new Date(0);
+      const dateB = b.createdAt ? new Date(b.createdAt) : new Date(0);
+      return dateB - dateA;
+    });
+
+    console.log(`getAllTasks: Found ${tasksArray.length} tasks, ${addedTasksArray.length} addedTasks, ${sortedTasks.length} total tasks`);
 
     res.json({
       success: true,
@@ -83,10 +135,21 @@ const getAllTasks = (req, res) => {
 const updateTask = (req, res) => {
   try {
     const { id } = req.params;
-    const { title, type, description, instructions, points, active } = req.body;
+    const { title, type, description, instructions, points, active, evidenceType, completedAmount } = req.body;
 
+    // Read both task sources
+    const addedTasks = readJSON('addedTasks');
     const tasks = readJSON('tasks');
-    const taskIndex = tasks.findIndex(t => t.id === id);
+    
+    // Check in addedTasks first (newly created tasks)
+    let taskIndex = addedTasks.findIndex(t => t.id === id);
+    let taskSource = 'addedTasks';
+    
+    // If not found, check in tasks.json
+    if (taskIndex === -1) {
+      taskIndex = tasks.findIndex(t => t.id === id);
+      taskSource = 'tasks';
+    }
 
     if (taskIndex === -1) {
       return res.status(404).json({
@@ -95,9 +158,13 @@ const updateTask = (req, res) => {
       });
     }
 
-    // Update task
-    if (title) tasks[taskIndex].title = title;
-    if (type) {
+    // Get the task array to update
+    const taskArray = taskSource === 'addedTasks' ? addedTasks : tasks;
+    const task = taskArray[taskIndex];
+
+    // Update task fields
+    if (title !== undefined) task.title = title;
+    if (type !== undefined) {
       const validTypes = ['youtube', 'social_media', 'website_visit', 'survey'];
       if (!validTypes.includes(type)) {
         return res.status(400).json({
@@ -105,19 +172,31 @@ const updateTask = (req, res) => {
           message: `Invalid task type. Must be one of: ${validTypes.join(', ')}`,
         });
       }
-      tasks[taskIndex].type = type;
+      task.type = type;
     }
-    if (description) tasks[taskIndex].description = description;
-    if (instructions !== undefined) tasks[taskIndex].instructions = instructions;
-    if (points !== undefined) tasks[taskIndex].points = parseInt(points);
-    if (active !== undefined) tasks[taskIndex].active = active === true || active === 'true';
+    if (description !== undefined) task.description = description;
+    if (instructions !== undefined) task.instructions = instructions;
+    if (points !== undefined) task.points = parseInt(points);
+    if (active !== undefined) task.active = active === true || active === 'true';
+    if (evidenceType !== undefined) {
+      const validEvidenceTypes = ['text', 'url', 'image'];
+      if (!validEvidenceTypes.includes(evidenceType)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid evidence type. Must be one of: ${validEvidenceTypes.join(', ')}`,
+        });
+      }
+      task.evidenceType = evidenceType;
+    }
+    if (completedAmount !== undefined) task.completedAmount = parseInt(completedAmount) || 0;
 
-    writeJSON('tasks', tasks);
+    // Save updated task
+    writeJSON(taskSource, taskArray);
 
     res.json({
       success: true,
       message: 'Task updated successfully',
-      data: tasks[taskIndex],
+      data: task,
     });
   } catch (error) {
     console.error('Update task error:', error);
@@ -129,46 +208,133 @@ const updateTask = (req, res) => {
 };
 
 /**
- * Delete task (Admin only)
+ * Get admin analytics and save to adminAnalytics.json
  */
-const deleteTask = (req, res) => {
+const getAdminAnalytics = (req, res) => {
   try {
-    const { id } = req.params;
-
+    const users = readJSON('users');
     const tasks = readJSON('tasks');
-    const taskIndex = tasks.findIndex(t => t.id === id);
-
-    if (taskIndex === -1) {
-      return res.status(404).json({
-        success: false,
-        message: 'Task not found',
-      });
-    }
-
-    // Check if task has submissions
+    const addedTasks = readJSON('addedTasks');
     const submissions = readJSON('submissions');
-    const taskSubmissions = submissions.filter(sub => sub.taskId === id);
+    const points = readJSON('points');
+    const claims = readJSON('claims');
 
-    if (taskSubmissions.length > 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Cannot delete task with existing submissions. Deactivate it instead.',
-      });
-    }
+    // Ensure all data is in array format
+    const usersArray = Array.isArray(users) ? users : [];
+    const tasksArray = Array.isArray(tasks) ? tasks : [];
+    const addedTasksArray = Array.isArray(addedTasks) ? addedTasks : [];
+    const submissionsArray = Array.isArray(submissions) ? submissions : [];
+    const pointsArray = Array.isArray(points) ? points : [];
+    const claimsArray = Array.isArray(claims) ? claims : [];
 
-    // Delete task
-    tasks.splice(taskIndex, 1);
-    writeJSON('tasks', tasks);
+    // Combine all tasks
+    const allTasks = [...tasksArray, ...addedTasksArray];
+    const uniqueTasks = Array.from(new Map(allTasks.map(task => [task.id, task])).values());
+
+    // Calculate statistics
+    const totalUsers = usersArray.length;
+    const activeUsers = usersArray.filter(u => u.status === 'active').length;
+    const pendingUsers = usersArray.filter(u => u.status === 'pending').length;
+    const suspendedUsers = usersArray.filter(u => u.status === 'suspended').length;
+    const regularUsers = usersArray.filter(u => u.role === 'user').length;
+    const adminUsers = usersArray.filter(u => u.role === 'admin').length;
+    const qaUsers = usersArray.filter(u => u.role === 'qa').length;
+
+    const totalTasks = uniqueTasks.length;
+    const activeTasks = uniqueTasks.filter(t => t.active).length;
+    const inactiveTasks = uniqueTasks.filter(t => !t.active).length;
+
+    const totalSubmissions = submissionsArray.length;
+    const pendingSubmissionsArray = submissionsArray.filter(s => s.status === 'pending');
+    const approvedSubmissionsArray = submissionsArray.filter(s => s.status === 'approved');
+    const rejectedSubmissionsArray = submissionsArray.filter(s => s.status === 'rejected');
+    
+    const pendingSubmissions = pendingSubmissionsArray.length;
+    const approvedSubmissions = approvedSubmissionsArray.length;
+    const rejectedSubmissions = rejectedSubmissionsArray.length;
+
+    const totalPointsAwarded = approvedSubmissionsArray.reduce((sum, sub) => sum + (sub.points || 0), 0);
+    const totalPointsClaimed = claimsArray.reduce((sum, claim) => sum + (claim.points || 0), 0);
+    const totalPointsInCirculation = usersArray.reduce((sum, user) => sum + (user.points || 0), 0);
+
+    // Top users by points
+    const topUsers = usersArray
+      .filter(u => u.role === 'user')
+      .sort((a, b) => (b.totalEarned || 0) - (a.totalEarned || 0))
+      .slice(0, 10)
+      .map(({ password, ...user }) => user); // Remove passwords
+
+    // Recent submissions
+    const recentSubmissions = submissionsArray
+      .sort((a, b) => new Date(b.submittedAt || 0) - new Date(a.submittedAt || 0))
+      .slice(0, 10);
+
+    // Task completion stats
+    const taskStats = uniqueTasks.map(task => {
+      const taskSubmissions = submissionsArray.filter(s => s.taskId === task.id);
+      return {
+        taskId: task.id,
+        taskTitle: task.title,
+        totalSubmissions: taskSubmissions.length,
+        approved: taskSubmissions.filter(s => s.status === 'approved').length,
+        rejected: taskSubmissions.filter(s => s.status === 'rejected').length,
+        pending: taskSubmissions.filter(s => s.status === 'pending').length,
+        pointsAwarded: taskSubmissions
+          .filter(s => s.status === 'approved')
+          .reduce((sum, s) => sum + (s.points || 0), 0),
+      };
+    });
+
+    // Create analytics object
+    const analytics = {
+      generatedAt: new Date().toISOString(),
+      overview: {
+        totalUsers,
+        activeUsers,
+        pendingUsers,
+        suspendedUsers,
+        regularUsers,
+        adminUsers,
+        qaUsers,
+      },
+      tasks: {
+        total: totalTasks,
+        active: activeTasks,
+        inactive: inactiveTasks,
+      },
+      submissions: {
+        total: totalSubmissions,
+        pending: pendingSubmissions,
+        approved: approvedSubmissions,
+        rejected: rejectedSubmissions,
+        approvalRate: totalSubmissions > 0 
+          ? ((approvedSubmissions / totalSubmissions) * 100).toFixed(2) + '%'
+          : '0%',
+      },
+      points: {
+        totalAwarded: totalPointsAwarded,
+        totalClaimed: totalPointsClaimed,
+        inCirculation: totalPointsInCirculation,
+        availableToClaim: totalPointsInCirculation - totalPointsClaimed,
+      },
+      topUsers,
+      recentSubmissions: recentSubmissions.slice(0, 5),
+      taskStats: taskStats.sort((a, b) => b.totalSubmissions - a.totalSubmissions).slice(0, 10),
+    };
+
+    // Save to adminAnalytics.json
+    writeJSON('adminAnalytics', analytics);
 
     res.json({
       success: true,
-      message: 'Task deleted successfully',
+      message: 'Analytics generated successfully',
+      data: analytics,
     });
   } catch (error) {
-    console.error('Delete task error:', error);
+    console.error('Get admin analytics error:', error);
     res.status(500).json({
       success: false,
-      message: 'Error deleting task',
+      message: 'Error generating analytics',
     });
   }
 };
@@ -197,188 +363,14 @@ const getAllUsers = (req, res) => {
 };
 
 /**
- * Get all submissions (Admin only)
- */
-const getAllSubmissions = (req, res) => {
-  try {
-    const { status } = req.query;
-    const submissions = readJSON('submissions');
-
-    let filteredSubmissions = submissions;
-
-    if (status) {
-      filteredSubmissions = submissions.filter(sub => sub.status === status);
-    }
-
-    const sortedSubmissions = filteredSubmissions.sort(
-      (a, b) => new Date(b.submittedAt) - new Date(a.submittedAt)
-    );
-
-    res.json({
-      success: true,
-      data: sortedSubmissions,
-      count: sortedSubmissions.length,
-    });
-  } catch (error) {
-    console.error('Get all submissions error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching submissions',
-    });
-  }
-};
-
-/**
- * Create operator (Admin or QA user) - Admin only
- */
-const createOperator = async (req, res) => {
-  try {
-    const { name, email, password, role = 'qa' } = req.body;
-
-    // Validation
-    if (!name || !email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: 'Name, email, and password are required',
-      });
-    }
-
-    // Only admin and qa roles allowed for operators
-    if (role !== 'admin' && role !== 'qa') {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid role. Operators must be either "admin" or "qa"',
-      });
-    }
-
-    const bcrypt = require('bcrypt');
-    const { v4: uuidv4 } = require('uuid');
-
-    // Check if user already exists
-    const users = readJSON('users');
-    const existingUser = users.find(u => u.email === email.toLowerCase());
-    
-    if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        message: 'User with this email already exists',
-      });
-    }
-
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Create new operator
-    const newOperator = {
-      id: uuidv4(),
-      name,
-      email: email.toLowerCase(),
-      password: hashedPassword,
-      role,
-      points: 0,
-      totalEarned: 0,
-      status: 'active', // Operators are automatically active
-      createdAt: new Date().toISOString(),
-    };
-
-    // Save operator
-    users.push(newOperator);
-    writeJSON('users', users);
-
-    // Return operator without password
-    const { password: _, ...operatorWithoutPassword } = newOperator;
-
-    res.status(201).json({
-      success: true,
-      message: `${role === 'admin' ? 'Admin' : 'QA operator'} created successfully`,
-      data: operatorWithoutPassword,
-    });
-  } catch (error) {
-    console.error('Create operator error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error creating operator',
-    });
-  }
-};
-
-/**
- * Get pending user requests (users with status 'pending') - Admin only
- */
-const getPendingUsers = (req, res) => {
-  try {
-    const users = readJSON('users');
-    const pendingUsers = users
-      .filter(u => u.status === 'pending')
-      .map(({ password, ...user }) => user); // Remove passwords
-
-    res.json({
-      success: true,
-      data: pendingUsers,
-      count: pendingUsers.length,
-    });
-  } catch (error) {
-    console.error('Get pending users error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching pending users',
-    });
-  }
-};
-
-/**
- * Approve user request - Admin only
- */
-const approveUser = (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const users = readJSON('users');
-    const userIndex = users.findIndex(u => u.id === id);
-
-    if (userIndex === -1) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found',
-      });
-    }
-
-    if (users[userIndex].status !== 'pending') {
-      return res.status(400).json({
-        success: false,
-        message: 'User is not pending approval',
-      });
-    }
-
-    // Approve user
-    users[userIndex].status = 'active';
-    writeJSON('users', users);
-
-    const { password: _, ...userWithoutPassword } = users[userIndex];
-
-    res.json({
-      success: true,
-      message: 'User approved successfully',
-      data: userWithoutPassword,
-    });
-  } catch (error) {
-    console.error('Approve user error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error approving user',
-    });
-  }
-};
-
-/**
- * Reject/Suspend user - Admin only
+ * Update user status (Admin only)
  */
 const updateUserStatus = (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
 
-    const validStatuses = ['active', 'pending', 'suspended'];
+    const validStatuses = ['active', 'pending', 'suspended', 'hibernate'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({
         success: false,
@@ -396,11 +388,11 @@ const updateUserStatus = (req, res) => {
       });
     }
 
-    // Prevent changing admin status
-    if (users[userIndex].role === 'admin' && status === 'suspended') {
+    // Prevent changing admin status to suspended or hibernate
+    if (users[userIndex].role === 'admin' && (status === 'suspended' || status === 'hibernate')) {
       return res.status(400).json({
         success: false,
-        message: 'Cannot suspend admin users',
+        message: 'Cannot suspend or hibernate admin users',
       });
     }
 
@@ -408,6 +400,7 @@ const updateUserStatus = (req, res) => {
     users[userIndex].status = status;
     writeJSON('users', users);
 
+    // Return user without password
     const { password: _, ...userWithoutPassword } = users[userIndex];
 
     res.json({
@@ -424,16 +417,49 @@ const updateUserStatus = (req, res) => {
   }
 };
 
+/**
+ * Get all claims (Admin only)
+ */
+const getAllClaims = (req, res) => {
+  try {
+    const claims = readJSON('claims');
+    const users = readJSON('users');
+
+    // Enrich claims with user information
+    const enrichedClaims = claims.map(claim => {
+      const user = users.find(u => u.id === claim.userId);
+      return {
+        ...claim,
+        userName: user?.name || 'Unknown',
+        userEmail: user?.email || 'Unknown',
+      };
+    });
+
+    // Sort by most recent first
+    const sortedClaims = enrichedClaims.sort(
+      (a, b) => new Date(b.claimedAt) - new Date(a.claimedAt)
+    );
+
+    res.json({
+      success: true,
+      data: sortedClaims,
+      count: sortedClaims.length,
+    });
+  } catch (error) {
+    console.error('Get all claims error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching claims',
+    });
+  }
+};
+
 module.exports = {
   createTask,
   getAllTasks,
   updateTask,
-  deleteTask,
+  getAdminAnalytics,
   getAllUsers,
-  getAllSubmissions,
-  createOperator,
-  getPendingUsers,
-  approveUser,
   updateUserStatus,
+  getAllClaims,
 };
-

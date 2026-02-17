@@ -23,10 +23,32 @@ function readJSON(fileName) {
       return [];
     }
     
-    const fileContent = fs.readFileSync(filePath, 'utf8');
-    return JSON.parse(fileContent);
+    const fileContent = fs.readFileSync(filePath, 'utf8').trim();
+    
+    // Handle empty or whitespace-only files
+    if (!fileContent || fileContent === '') {
+      return [];
+    }
+    
+    const parsed = JSON.parse(fileContent);
+    // Ensure we return an array for addedTasks
+    if (fileName === 'addedTasks' && !Array.isArray(parsed)) {
+      console.warn(`addedTasks.json is not an array, resetting to empty array`);
+      return [];
+    }
+    
+    return parsed;
   } catch (error) {
     console.error(`Error reading ${fileName}.json:`, error);
+    // If file exists but is corrupted, reset it to empty array
+    if (fileName === 'addedTasks') {
+      try {
+        fs.writeFileSync(filePath, JSON.stringify([], null, 2));
+        console.log(`Reset corrupted ${fileName}.json to empty array`);
+      } catch (writeError) {
+        console.error(`Failed to reset ${fileName}.json:`, writeError);
+      }
+    }
     return [];
   }
 }
@@ -53,7 +75,7 @@ function writeJSON(fileName, data) {
  * Initialize data files with default structure if they don't exist
  */
 function initializeDataFiles() {
-  const files = ['users', 'tasks', 'submissions', 'points', 'claims'];
+  const files = ['users', 'tasks', 'submissions', 'points', 'claims', 'addedTasks'];
   
   files.forEach(file => {
     const filePath = path.join(dataDir, `${file}.json`);
@@ -62,14 +84,19 @@ function initializeDataFiles() {
       console.log(`✅ Created ${file}.json`);
     }
   });
+  
+  // Initialize adminAnalytics.json with empty object if it doesn't exist
+  const analyticsPath = path.join(dataDir, 'adminAnalytics.json');
+  if (!fs.existsSync(analyticsPath)) {
+      writeJSON('adminAnalytics', {});
+      console.log(`✅ Created adminAnalytics.json`);
+  }
 }
-
-// Initialize on module load
-initializeDataFiles();
 
 module.exports = {
   readJSON,
   writeJSON,
   dataDir,
+  initializeDataFiles,
 };
 

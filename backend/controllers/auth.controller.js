@@ -1,16 +1,15 @@
 const bcrypt = require('bcrypt');
-const { v4: uuidv4 } = require('uuid');
 const jwt = require('jsonwebtoken');
+const { v4: uuidv4 } = require('uuid');
 const { readJSON, writeJSON } = require('../utils/fileHandler');
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+const { JWT_SECRET } = require('../middleware/auth.middleware');
 
 /**
- * Register a new user
+ * Register new user
  */
 const register = async (req, res) => {
   try {
-    const { name, email, password, role = 'user' } = req.body;
+    const { name, email, password } = req.body;
 
     // Validation
     if (!name || !email || !password) {
@@ -22,7 +21,7 @@ const register = async (req, res) => {
 
     // Check if user already exists
     const users = readJSON('users');
-    const existingUser = users.find(u => u.email === email.toLowerCase());
+    const existingUser = users.find(u => u.email.toLowerCase() === email.toLowerCase());
     
     if (existingUser) {
       return res.status(400).json({
@@ -40,7 +39,7 @@ const register = async (req, res) => {
       name,
       email: email.toLowerCase(),
       password: hashedPassword,
-      role: role === 'admin' || role === 'qa' ? role : 'user',
+      role: 'user',
       points: 0,
       totalEarned: 0,
       status: 'pending', // New users need admin approval
@@ -51,23 +50,13 @@ const register = async (req, res) => {
     users.push(newUser);
     writeJSON('users', users);
 
-    // Generate token
-    const token = jwt.sign(
-      { userId: newUser.id, email: newUser.email, role: newUser.role },
-      JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-
     // Return user without password
     const { password: _, ...userWithoutPassword } = newUser;
 
     res.status(201).json({
       success: true,
-      message: 'User registered successfully',
-      data: {
-        user: userWithoutPassword,
-        token,
-      },
+      message: 'User registered successfully. Waiting for admin approval.',
+      data: userWithoutPassword,
     });
   } catch (error) {
     console.error('Register error:', error);
@@ -95,7 +84,7 @@ const login = async (req, res) => {
 
     // Find user
     const users = readJSON('users');
-    const user = users.find(u => u.email === email.toLowerCase());
+    const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
 
     if (!user) {
       return res.status(401).json({
@@ -104,34 +93,38 @@ const login = async (req, res) => {
       });
     }
 
-    // Check if user is active
-    if (user.status === 'pending') {
-      return res.status(403).json({
-        success: false,
-        message: 'Your account is pending approval. Please wait for admin approval.',
-      });
-    }
-
-    if (user.status === 'suspended') {
-      return res.status(403).json({
-        success: false,
-        message: 'Your account has been suspended. Please contact admin.',
-      });
-    }
-
-    // Verify password
-    const isValidPassword = await bcrypt.compare(password, user.password);
-
-    if (!isValidPassword) {
+    // Check password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
       return res.status(401).json({
         success: false,
         message: 'Invalid email or password',
       });
     }
 
-    // Generate token
+    // Check if user is active
+    if (user.status !== 'active') {
+      let message = 'Your account is not active';
+      if (user.status === 'pending') {
+        message = 'Your account is pending approval';
+      } else if (user.status === 'suspended') {
+        message = 'Your account has been deactivated';
+      } else if (user.status === 'hibernate') {
+        message = 'Your account is in hibernate mode';
+      }
+      return res.status(403).json({
+        success: false,
+        message,
+      });
+    }
+
+    // Generate JWT token
     const token = jwt.sign(
-      { userId: user.id, email: user.email, role: user.role },
+      {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+      },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -171,6 +164,7 @@ const getProfile = (req, res) => {
       });
     }
 
+    // Return user without password
     const { password: _, ...userWithoutPassword } = user;
 
     res.json({

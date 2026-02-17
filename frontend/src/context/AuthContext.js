@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+import API_URL from '../config/api';
 
 const AuthContext = createContext(undefined);
 
@@ -94,6 +94,7 @@ export function AuthProvider({ children }) {
       user, 
       login, 
       logout, 
+      fetchProfile,
       isAuthenticated: !!user 
     }}>
       {children}

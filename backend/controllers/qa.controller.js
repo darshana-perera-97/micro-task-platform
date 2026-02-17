@@ -1,29 +1,27 @@
 const { readJSON, writeJSON } = require('../utils/fileHandler');
 
 /**
- * Get submissions by status (QA only)
+ * Get submissions by status
  */
 const getSubmissionsByStatus = (req, res) => {
   try {
-    const { status = 'pending' } = req.query;
+    const { status } = req.query;
     const submissions = readJSON('submissions');
 
-    const validStatuses = ['pending', 'approved', 'rejected'];
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message: `Invalid status. Must be one of: ${validStatuses.join(', ')}`,
-      });
+    let filteredSubmissions = submissions;
+
+    if (status) {
+      filteredSubmissions = submissions.filter(sub => sub.status === status);
     }
 
-    const filteredSubmissions = submissions
-      .filter(sub => sub.status === status)
-      .sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+    const sortedSubmissions = filteredSubmissions.sort(
+      (a, b) => new Date(b.submittedAt) - new Date(a.submittedAt)
+    );
 
     res.json({
       success: true,
-      data: filteredSubmissions,
-      count: filteredSubmissions.length,
+      data: sortedSubmissions,
+      count: sortedSubmissions.length,
     });
   } catch (error) {
     console.error('Get submissions by status error:', error);
@@ -35,24 +33,22 @@ const getSubmissionsByStatus = (req, res) => {
 };
 
 /**
- * Approve submission (QA only)
+ * Approve submission
  */
 const approveSubmission = (req, res) => {
   try {
     const { id } = req.params;
-    const { comment = '' } = req.body;
+    const { comment } = req.body;
 
     const submissions = readJSON('submissions');
-    const submissionIndex = submissions.findIndex(sub => sub.id === id);
+    const submission = submissions.find(sub => sub.id === id);
 
-    if (submissionIndex === -1) {
+    if (!submission) {
       return res.status(404).json({
         success: false,
         message: 'Submission not found',
       });
     }
-
-    const submission = submissions[submissionIndex];
 
     if (submission.status !== 'pending') {
       return res.status(400).json({
@@ -61,39 +57,51 @@ const approveSubmission = (req, res) => {
       });
     }
 
-    // Update submission status
-    submissions[submissionIndex].status = 'approved';
-    submissions[submissionIndex].qaComment = comment;
-    submissions[submissionIndex].reviewedAt = new Date().toISOString();
+    // Get reviewer info
+    const users = readJSON('users');
+    const reviewer = users.find(u => u.id === req.user.id);
+    const reviewerName = reviewer ? reviewer.name : 'Unknown';
+    const reviewerId = req.user.id;
 
-    writeJSON('submissions', submissions);
+    // Update submission
+    submission.status = 'approved';
+    submission.qaComment = comment || '';
+    submission.reviewedAt = new Date().toISOString();
+    submission.reviewerId = reviewerId;
+    submission.reviewerName = reviewerName;
 
     // Update user points
-    const users = readJSON('users');
-    const userIndex = users.findIndex(u => u.id === submission.userId);
-
-    if (userIndex !== -1) {
-      users[userIndex].points += submission.points;
-      users[userIndex].totalEarned += submission.points;
+    const user = users.find(u => u.id === submission.userId);
+    if (user) {
+      const pointsToAward = submission.points || 0;
+      user.points = (user.points || 0) + pointsToAward;
+      user.totalEarned = (user.totalEarned || 0) + pointsToAward;
       writeJSON('users', users);
 
-      // Record points transaction
+      // Record points history
       const points = readJSON('points');
-      points.push({
-        id: require('uuid').v4(),
+      const pointRecord = {
+        id: `point-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         userId: submission.userId,
+        amount: pointsToAward,
+        type: 'task_approval',
+        description: `Task approved: ${submission.taskTitle}`,
         submissionId: submission.id,
-        points: submission.points,
-        type: 'earned',
         createdAt: new Date().toISOString(),
-      });
+      };
+      points.push(pointRecord);
       writeJSON('points', points);
+      
+      console.log(`Points awarded: User ${user.name} received ${pointsToAward} points for task "${submission.taskTitle}"`);
     }
+
+    // Save submission
+    writeJSON('submissions', submissions);
 
     res.json({
       success: true,
       message: 'Submission approved successfully',
-      data: submissions[submissionIndex],
+      data: submission,
     });
   } catch (error) {
     console.error('Approve submission error:', error);
@@ -105,31 +113,22 @@ const approveSubmission = (req, res) => {
 };
 
 /**
- * Reject submission (QA only)
+ * Reject submission
  */
 const rejectSubmission = (req, res) => {
   try {
     const { id } = req.params;
-    const { comment = '' } = req.body;
-
-    if (!comment) {
-      return res.status(400).json({
-        success: false,
-        message: 'Comment is required when rejecting a submission',
-      });
-    }
+    const { comment } = req.body;
 
     const submissions = readJSON('submissions');
-    const submissionIndex = submissions.findIndex(sub => sub.id === id);
+    const submission = submissions.find(sub => sub.id === id);
 
-    if (submissionIndex === -1) {
+    if (!submission) {
       return res.status(404).json({
         success: false,
         message: 'Submission not found',
       });
     }
-
-    const submission = submissions[submissionIndex];
 
     if (submission.status !== 'pending') {
       return res.status(400).json({
@@ -138,17 +137,26 @@ const rejectSubmission = (req, res) => {
       });
     }
 
-    // Update submission status
-    submissions[submissionIndex].status = 'rejected';
-    submissions[submissionIndex].qaComment = comment;
-    submissions[submissionIndex].reviewedAt = new Date().toISOString();
+    // Get reviewer info
+    const users = readJSON('users');
+    const reviewer = users.find(u => u.id === req.user.id);
+    const reviewerName = reviewer ? reviewer.name : 'Unknown';
+    const reviewerId = req.user.id;
 
+    // Update submission
+    submission.status = 'rejected';
+    submission.qaComment = comment || 'Submission rejected';
+    submission.reviewedAt = new Date().toISOString();
+    submission.reviewerId = reviewerId;
+    submission.reviewerName = reviewerName;
+
+    // Save submission
     writeJSON('submissions', submissions);
 
     res.json({
       success: true,
       message: 'Submission rejected',
-      data: submissions[submissionIndex],
+      data: submission,
     });
   } catch (error) {
     console.error('Reject submission error:', error);
