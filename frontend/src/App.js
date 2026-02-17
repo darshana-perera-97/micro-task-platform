@@ -3,12 +3,14 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { DataProvider } from './context/DataContext';
 import { LoginPage } from './components/auth/LoginPage';
+import { LandingPage } from './components/landing/LandingPage';
 import { Navbar } from './components/layout/Navbar';
 import { Sidebar } from './components/layout/Sidebar';
 import { Toaster } from './components/ui/sonner';
 import { cn } from './components/ui/utils';
 import { ProtectedRoute } from './components/routing/ProtectedRoute';
 import { RoleRedirect } from './components/routing/RoleRedirect';
+import { SEO } from './components/seo/SEO';
 
 // User Components
 import { UserDashboard } from './components/user/UserDashboard';
@@ -63,10 +65,8 @@ function AppRoutes() {
   return (
     <Routes>
       {/* Public Routes */}
+      <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
-      
-      {/* Root redirect */}
-      <Route path="/" element={<RoleRedirect />} />
 
       {/* User Routes */}
       <Route
@@ -127,8 +127,8 @@ function AppRoutes() {
         <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
       </Route>
 
-      {/* Catch all - redirect to login */}
-      <Route path="*" element={<Navigate to="/login" replace />} />
+      {/* Catch all - redirect to landing page */}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
@@ -138,6 +138,7 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <DataProvider>
+          <SEO />
           <AppRoutes />
           <Toaster position="top-right" />
         </DataProvider>

@@ -8,19 +8,12 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
 
-  useEffect(() => {
-    // Check for saved user and token in localStorage
-    const savedUser = localStorage.getItem('currentUser');
-    const savedToken = localStorage.getItem('authToken');
-    
-    if (savedUser && savedToken) {
-      setUser(JSON.parse(savedUser));
-      setToken(savedToken);
-      
-      // Verify token is still valid by fetching profile
-      fetchProfile(savedToken);
-    }
-  }, []);
+  const logout = () => {
+    setUser(null);
+    setToken(null);
+    localStorage.removeItem('currentUser');
+    localStorage.removeItem('authToken');
+  };
 
   const fetchProfile = async (authToken) => {
     try {
@@ -48,6 +41,20 @@ export function AuthProvider({ children }) {
       logout();
     }
   };
+
+  useEffect(() => {
+    // Check for saved user and token in localStorage
+    const savedUser = localStorage.getItem('currentUser');
+    const savedToken = localStorage.getItem('authToken');
+    
+    if (savedUser && savedToken) {
+      setUser(JSON.parse(savedUser));
+      setToken(savedToken);
+      
+      // Verify token is still valid by fetching profile
+      fetchProfile(savedToken);
+    }
+  }, []);
 
   const login = async (email, password) => {
     try {
@@ -80,13 +87,6 @@ export function AuthProvider({ children }) {
       // Otherwise, throw a generic error
       throw new Error('Failed to connect to server. Please make sure the backend is running.');
     }
-  };
-
-  const logout = () => {
-    setUser(null);
-    setToken(null);
-    localStorage.removeItem('currentUser');
-    localStorage.removeItem('authToken');
   };
 
   return (
